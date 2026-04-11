@@ -1,4 +1,10 @@
-import type { AnalysisRequest, AnalysisResponse, WorkerMessage } from './types';
+import type {
+  AnalysisRequest,
+  AnalysisResponse,
+  GuardrailThresholdRequest,
+  GuardrailThresholdResult,
+  WorkerMessage,
+} from './types';
 import { useSettingsStore } from '@/lib/store/settingsStore';
 import { useEngineStatusStore } from '@/lib/store/engineStatusStore';
 import { useLoadingStore } from '@/lib/store/loadingStore';
@@ -34,6 +40,10 @@ let statsWorker: Worker | null = null;
 let pendingResolve: ((value: AnalysisResponse) => void) | null = null;
 let pendingReject: ((reason: Error) => void) | null = null;
 let pendingTimeoutId: ReturnType<typeof setTimeout> | null = null;
+
+// Pending guardrail threshold promise callbacks
+let pendingGuardrailResolve: ((value: GuardrailThresholdResult) => void) | null = null;
+let pendingGuardrailReject: ((reason: Error) => void) | null = null;
 
 function clearPendingTimeout(): void {
   if (pendingTimeoutId !== null) {
@@ -93,6 +103,15 @@ function getOrCreateStatsWorker(): Worker {
       pendingReject?.(new Error(msg.message));
       pendingResolve = null;
       pendingReject = null;
+      pendingGuardrailReject?.(new Error(msg.message));
+      pendingGuardrailResolve = null;
+      pendingGuardrailReject = null;
+    }
+
+    if (msg.type === 'guardrail-threshold-result') {
+      pendingGuardrailResolve?.(msg.data);
+      pendingGuardrailResolve = null;
+      pendingGuardrailReject = null;
     }
   };
 
@@ -144,6 +163,19 @@ function runAnalysisInWorker(
   });
 
   return Promise.race([analysisPromise, timeoutPromise]);
+}
+
+// ----- Guardrail Threshold Calculator (Pyodide only) -----
+
+export async function runGuardrailThreshold(
+  request: GuardrailThresholdRequest,
+): Promise<GuardrailThresholdResult> {
+  return new Promise<GuardrailThresholdResult>((resolve, reject) => {
+    const worker = getOrCreateStatsWorker();
+    pendingGuardrailResolve = resolve;
+    pendingGuardrailReject = reject;
+    worker.postMessage(request);
+  });
 }
 
 // ----- Path B: Lambda Function URL -----

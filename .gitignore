@@ -38,3 +38,6 @@ __pycache__/
 
 # SAM
 .aws-sam/
+
+# .obsidian
+.obsidian/

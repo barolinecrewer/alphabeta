@@ -46,6 +46,8 @@ export interface Metric {
   capType?: 'absolute' | 'percentile';
   minSampleSize?: number;
   isGuardrail: boolean;
+  conservativeThreshold?: number; // μ − 1σ, set via GuardrailThresholdCalculator
+  flexibleThreshold?: number;      // μ − 2σ, set via GuardrailThresholdCalculator
   tags: string[];
   createdAt: number;
 }

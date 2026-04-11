@@ -66,7 +66,50 @@ await micropip.install('gbstats', deps=False)
   return pyodide;
 }
 
+async function handleGuardrailThreshold(data) {
+  try {
+    const py = await initPyodide();
+    py.globals.set('guardrail_request_json', JSON.stringify(data));
+    const resultJson = await py.runPythonAsync(`
+import json
+import numpy as np
+
+req = json.loads(guardrail_request_json)
+p1, p2 = req['period1'], req['period2']
+mu1, sd1, n1 = p1['mu'], p1['sd'], p1['weight']
+mu2, sd2, n2 = p2['mu'], p2['sd'], p2['weight']
+
+w1, w2 = n1 / (n1 + n2), n2 / (n1 + n2)
+mu = w1 * mu1 + w2 * mu2
+sd = float(np.sqrt(
+    w1 * (sd1 ** 2 + (mu1 - mu) ** 2) +
+    w2 * (sd2 ** 2 + (mu2 - mu) ** 2)
+))
+
+cons = round(mu - 1.0 * sd, 6)
+flex = round(mu - 2.0 * sd, 6)
+
+json.dumps({
+    'combinedMu': round(mu, 6),
+    'combinedSd': round(sd, 6),
+    'conservativeThreshold': cons,
+    'flexibleThreshold': flex,
+    'conservativePct': round(-sd / mu * 100, 4) if mu != 0 else 0.0,
+    'flexiblePct': round(-2 * sd / mu * 100, 4) if mu != 0 else 0.0,
+})
+    `);
+    self.postMessage({ type: 'guardrail-threshold-result', data: JSON.parse(resultJson) });
+  } catch (err) {
+    self.postMessage({ type: 'error', message: String(err) });
+  }
+}
+
 self.onmessage = async (event) => {
+  if (event.data.type === 'guardrail-threshold') {
+    await handleGuardrailThreshold(event.data);
+    return;
+  }
+
   try {
     const py = await initPyodide();
 

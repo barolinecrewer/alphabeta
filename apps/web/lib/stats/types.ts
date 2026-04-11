@@ -85,5 +85,23 @@ export interface MetricVariationResult {
 // Worker message types for Path A (Pyodide Web Worker)
 export type WorkerMessage =
   | { type: 'result'; data: AnalysisResponse }
+  | { type: 'guardrail-threshold-result'; data: GuardrailThresholdResult }
   | { type: 'error'; message: string }
   | { type: 'status'; message: string };
+
+// ---- Guardrail Threshold Calculator ----
+
+export interface GuardrailThresholdRequest {
+  type: 'guardrail-threshold';
+  period1: { mu: number; sd: number; weight: number };
+  period2: { mu: number; sd: number; weight: number };
+}
+
+export interface GuardrailThresholdResult {
+  combinedMu: number;
+  combinedSd: number;
+  conservativeThreshold: number; // combinedMu - 1 * combinedSd
+  flexibleThreshold: number;      // combinedMu - 2 * combinedSd
+  conservativePct: number;
+  flexiblePct: number;
+}

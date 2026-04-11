@@ -11,6 +11,7 @@ import {
   type Metric,
   type Experiment,
 } from '@/lib/db';
+import { GuardrailThresholdCalculator } from '@/components/GuardrailThresholdCalculator';
 
 interface MetricLibraryExport {
   version: 1;
@@ -27,6 +28,8 @@ const EMPTY_FORM: MetricFormData = {
   normalization: 'raw_total',
   higherIsBetter: true,
   isGuardrail: false,
+  conservativeThreshold: undefined,
+  flexibleThreshold: undefined,
   tags: [],
 };
 
@@ -139,6 +142,14 @@ export default function MetricsPage() {
       // Reset file input so re-selecting the same file triggers onChange
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
+  }
+
+  function handleThresholdsCalculated(conservative: number, flexible: number) {
+    setForm((prev) => ({
+      ...prev,
+      conservativeThreshold: conservative,
+      flexibleThreshold: flexible,
+    }));
   }
 
   async function toggleMetricDetail(metricId: string) {
@@ -284,9 +295,15 @@ export default function MetricsPage() {
                     className="form-check-input"
                     type="checkbox"
                     checked={form.isGuardrail}
-                    onChange={(e) =>
-                      setForm({ ...form, isGuardrail: e.target.checked })
-                    }
+                    onChange={(e) => {
+                      const checked = e.target.checked;
+                      setForm({
+                        ...form,
+                        isGuardrail: checked,
+                        conservativeThreshold: checked ? form.conservativeThreshold : undefined,
+                        flexibleThreshold: checked ? form.flexibleThreshold : undefined,
+                      });
+                    }}
                     id="isGuardrail"
                   />
                   <label className="form-check-label" htmlFor="isGuardrail">
@@ -294,6 +311,20 @@ export default function MetricsPage() {
                   </label>
                 </div>
               </div>
+              {form.isGuardrail && (
+                <div className="col-12">
+                  <GuardrailThresholdCalculator
+                    onThresholdsCalculated={handleThresholdsCalculated}
+                  />
+                  {(form.conservativeThreshold != null || form.flexibleThreshold != null) && (
+                    <p className="text-muted small mt-2 mb-0">
+                      Stored thresholds — Conservative:{' '}
+                      {form.conservativeThreshold?.toFixed(4) ?? '—'}, Flexible:{' '}
+                      {form.flexibleThreshold?.toFixed(4) ?? '—'}
+                    </p>
+                  )}
+                </div>
+              )}
               <div className="col-md-3">
                 <label className="form-label">Cap type</label>
                 <select
@@ -417,6 +448,19 @@ export default function MetricsPage() {
                 {expandedMetricId === m.id && (
                   <tr key={`${m.id}-detail`} className="bg-body-secondary">
                     <td colSpan={6} className="px-4 py-3">
+                      {m.isGuardrail &&
+                        (m.conservativeThreshold != null || m.flexibleThreshold != null) && (
+                          <p className="small mb-2">
+                            <strong>Pre-registered thresholds:</strong>{' '}
+                            <span className="text-warning-emphasis">
+                              Conservative: {m.conservativeThreshold?.toFixed(4) ?? '—'}
+                            </span>
+                            <span className="mx-2 text-muted">|</span>
+                            <span className="text-danger">
+                              Flexible: {m.flexibleThreshold?.toFixed(4) ?? '—'}
+                            </span>
+                          </p>
+                        )}
                       <strong className="small">Used by experiments:</strong>
                       {usedByExperiments.length === 0 ? (
                         <p className="text-muted small mb-0 mt-1">
