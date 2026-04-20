@@ -14,6 +14,7 @@ export function NavBar() {
   const links = [
     { href: '/', label: 'Experiments' },
     { href: '/metrics', label: 'Metrics' },
+    { href: '/tools', label: 'Tools' },
     { href: '/settings', label: 'Settings' },
   ];
 

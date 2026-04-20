@@ -6,15 +6,35 @@
  * See requirements.md Section 6.8.
  */
 
-import { useState, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { MDETip, AlphaTip, PowerTip, CohensHTip } from '@/components/StatTooltip';
-import { computePowerCalc } from '@/lib/stats/powerCalculator';
+import { computePowerCalc, type PowerCalcResult } from '@/lib/stats/powerCalculator';
+
+export interface PowerCalculatorInputState {
+  baselinePct: number;
+  mdePct: number;
+  mdeMode: 'relative' | 'absolute';
+  alphaPct: number;
+  powerPct: number;
+  dailyUsers: number;
+  splitRatio: number;
+}
+
+export type PowerCalculatorResultState = PowerCalcResult & {
+  estimatedDays: number | null;
+};
+
+export interface PowerCalculatorState {
+  input: PowerCalculatorInputState;
+  result: PowerCalculatorResultState | null;
+}
 
 interface PowerCalculatorProps {
   defaultSplitRatio?: number;
+  onChange?: (state: PowerCalculatorState) => void;
 }
 
-export function PowerCalculator({ defaultSplitRatio = 1.0 }: PowerCalculatorProps) {
+export function PowerCalculator({ defaultSplitRatio = 1.0, onChange }: PowerCalculatorProps) {
   const [baseline, setBaseline] = useState(5);       // percentage
   const [mdeValue, setMdeValue] = useState(15);       // percentage
   const [mdeMode, setMdeMode] = useState<'relative' | 'absolute'>('relative');
@@ -37,6 +57,21 @@ export function PowerCalculator({ defaultSplitRatio = 1.0 }: PowerCalculatorProp
       dailyUsers > 0 ? Math.ceil(calc.totalN / dailyUsers) : null;
     return { ...calc, estimatedDays };
   }, [baseline, mdeValue, mdeMode, alpha, power, dailyUsers, defaultSplitRatio]);
+
+  useEffect(() => {
+    onChange?.({
+      input: {
+        baselinePct: baseline,
+        mdePct: mdeValue,
+        mdeMode,
+        alphaPct: alpha,
+        powerPct: power,
+        dailyUsers,
+        splitRatio: defaultSplitRatio,
+      },
+      result,
+    });
+  }, [alpha, baseline, dailyUsers, defaultSplitRatio, mdeMode, mdeValue, onChange, power, result]);
 
   return (
     <div className="card mt-3">
@@ -159,4 +194,3 @@ export function PowerCalculator({ defaultSplitRatio = 1.0 }: PowerCalculatorProp
     </div>
   );
 }
-

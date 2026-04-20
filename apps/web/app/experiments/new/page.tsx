@@ -19,6 +19,11 @@ import { PowerCalculator } from '@/components/PowerCalculator';
 import { VariationEditor, variationsValid } from '@/components/VariationEditor';
 import { StatsConfigEditor } from '@/components/StatsConfigEditor';
 import { MetricPicker } from '@/components/MetricPicker';
+import {
+  POWER_CALC_PREFILL_KEY,
+  appendPowerCalculatorSummary,
+  type PowerCalculatorSnapshot,
+} from '@/lib/tools/powerCalculatorSummary';
 
 type StatsEngine = 'bayesian' | 'frequentist' | 'sequential';
 type Correction = 'none' | 'holm-bonferroni' | 'benjamini-hochberg';
@@ -66,6 +71,25 @@ export default function NewExperimentPage() {
 
   useEffect(() => {
     getMetrics().then(setMetrics);
+  }, []);
+
+  useEffect(() => {
+    const raw = sessionStorage.getItem(POWER_CALC_PREFILL_KEY);
+    if (!raw) return;
+
+    try {
+      const snapshot = JSON.parse(raw) as PowerCalculatorSnapshot;
+      setForm((prev) => {
+        return {
+          ...prev,
+          description: appendPowerCalculatorSummary(prev.description, snapshot),
+        };
+      });
+    } catch {
+      // Ignore stale or malformed session data.
+    } finally {
+      sessionStorage.removeItem(POWER_CALC_PREFILL_KEY);
+    }
   }, []);
 
   function canProceed(): boolean {
