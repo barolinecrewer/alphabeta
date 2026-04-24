@@ -153,7 +153,7 @@ export default function DashboardPage() {
                 (s) => (
                   <button
                     key={s}
-                    className={`btn ${statusFilter === s ? 'btn-dark' : 'btn-outline-dark'}`}
+                    className={`btn ${statusFilter === s ? 'btn-secondary' : 'btn-outline-secondary'}`}
                     onClick={() => setStatusFilter(s)}
                   >
                     {s === 'all' ? 'All' : s.charAt(0).toUpperCase() + s.slice(1)}
